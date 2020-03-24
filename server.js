@@ -28,8 +28,8 @@ process.on('uncaughtException', (err, origin) => {
 })
 
 const init = async () => {
-  const url = 'mongodb://localhost:27017/gamestudio'
-  const name = 'gamestudio'
+  const url = process.env.MONGODB_URL
+  const name = 'gamestudioDB'
   const options = {
     useNewUrlParser: true,
     useUnifiedTopology: true
