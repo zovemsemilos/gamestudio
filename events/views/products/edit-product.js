@@ -3,7 +3,7 @@ const editProduct = async (manager, data) => {
   const {token, collection, product} = data
 
   try {
-    if (manager.verifyAdmin(token)) {
+    if (await manager.verifyAdmin(token)) {
       const _id = manager.getMongoId(product._id)
       product._id = _id
 

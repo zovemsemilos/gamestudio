@@ -7,6 +7,7 @@ const eventImports = {
   getSearchData: require('./events/header/get-search-data'),
   login: require('./events/header/login'),
   register: require('./events/header/register'),
+  search: require('./events/header/search'),
   // Menu
   addMenu: require('./events/menu/add-menu'),
   editMenu: require('./events/menu/edit-menu'),
@@ -24,12 +25,13 @@ const eventImports = {
   getCart: require('./events/views/cart/get-cart'),
   increaseQty: require('./events/views/cart/increase-qty'),
   removeFromCart: require('./events/views/cart/remove-from-cart'),
+  // Views / Home
+  getBanners: require('./events/views/home/get-banners'),
+  editBanners: require('./events/views/home/edit-banners'),
+  getDiscountedProducts: require('./events/views/home/get-discounted-products'),
   // To Do...
   authenticate: require('./events/authenticate'),
   checkoutApproved: require('./events/checkout-approved'),
-  editBanners: require('./events/edit-banners'),
-  getBanners: require('./events/get-banners'),
-  getEditBanners: require('./events/get-edit-banners'),
   getProduct: require('./events/get-product'),
 }
 
@@ -56,12 +58,16 @@ class Manager {
     return mongodb.ObjectId(string)
   }
 
+  get bcrypt() {return bcrypt}
+  get jwt() {return jwt}
+  get mongodb() {return mongodb}
+
   async hashPassword(password) {
     const {saltRounds} = this
 
     try {
-      const hashed = await bcrypt.hash(password, saltRounds)
-      return hashed
+      const hashedPassword = await bcrypt.hash(password, saltRounds)
+      return hashedPassword
     } catch (err) {
       console.error(err)
     }
@@ -130,25 +136,46 @@ class Manager {
 
     try {
       const menus = await db.collection('menus').find().toArray()
-      const newColl = {}
+      const collections = []
 
-      for (const menu of menus) {
-        newColl[menu.name] = {}
+      menus.forEach((menu) => {
+        menu.categories.forEach((category) => {
+          category.collections.forEach((collection) => {
+            collections.push(collection.name.split(' ').join('_').toLowerCase())
+          })
+        })
+      })
 
-        for (const category of menu.categories) {
-          newColl[menu.name][category.name] = []
-
-          for (const collection of category.collections) {
-            newColl[menu.name][category.name].push(collection.name.split(' ').join('_').toLowerCase())
-          }
-        }
-      }
-
-      return newColl
+      return collections
     } catch (err) {
       console.error(err)
     }
   }
+
+  // async getProductCollections() {
+  //   const {db} = this
+
+  //   try {
+  //     const menus = await db.collection('menus').find().toArray()
+  //     const newColl = {}
+
+  //     for (const menu of menus) {
+  //       newColl[menu.name] = {}
+
+  //       for (const category of menu.categories) {
+  //         newColl[menu.name][category.name] = []
+
+  //         for (const collection of category.collections) {
+  //           newColl[menu.name][category.name].push(collection.name.split(' ').join('_').toLowerCase())
+  //         }
+  //       }
+  //     }
+
+  //     return newColl
+  //   } catch (err) {
+  //     console.error(err)
+  //   }
+  // }
 }
 
 module.exports = Manager
