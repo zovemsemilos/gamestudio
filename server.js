@@ -10,13 +10,6 @@ const app = express()
 const server = http.createServer(app)
 const io = socketio(server)
 
-// app.use((req, res, next) => {
-//   if (req.header('x-forwarded-proto') !== 'https')
-//     res.redirect(`https://${req.header('host')}${req.url}`)
-//   else
-//     next()
-// })
-
 app.use(express.static(path.join(__dirname, 'app')))
 app.get('/', (req, res) => res.sendFile(`${__dirname}/app/index.html`))
 app.get('*', (req, res) => res.sendFile(`${__dirname}/app/index.html`))
