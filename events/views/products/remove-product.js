@@ -1,14 +1,13 @@
 const removeProduct = async (manager, data) => {
-  const {io, socket, db} = manager
-  const {token, collection, productId} = data
+  const {io, socket, db, mongodb} = manager
+  const {token, dbCollection, productId} = data
 
   try {
     if (await manager.verifyAdmin(token)) {
-      const _id = manager.getMongoId(productId)
+      const _id = mongodb.ObjectId(productId)
+      const {value} = await db.collection(dbCollection).findOneAndDelete({_id})
 
-      await db.collection(collection).deleteOne({_id})
-
-      io.emit('removeProductRes', productId)
+      io.emit('removeProductRes', value)
       socket.emit('matDialogClose')
     }
   } catch (err) {

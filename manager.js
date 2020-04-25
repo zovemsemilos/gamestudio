@@ -46,12 +46,13 @@ class Manager {
   }
 
   init() {
-    const events = Object.keys(eventImports).reduce((acc, cur) => {
-      acc[cur] = (data) => eventImports[cur](this, data ? data : {})
+    const {socket} = this
+    const events = Object.keys(eventImports).reduce((acc, event) => {
+      acc[event] = (data) => eventImports[event](this, data ? data : {})
       return acc
     }, {})
 
-    Object.keys(events).forEach((event) => this.socket.on(event, events[event]))
+    Object.keys(events).forEach((event) => socket.on(event, events[event]))
   }
 
   getMongoId(string) {
@@ -67,7 +68,10 @@ class Manager {
 
     try {
       const hashedPassword = await bcrypt.hash(password, saltRounds)
-      return hashedPassword
+
+      if (hashedPassword) {
+        return hashedPassword
+      }
     } catch (err) {
       console.error(err)
     }
@@ -76,7 +80,10 @@ class Manager {
   async verifyPassword(first, second) {
     try {
       const verified = await bcrypt.compare(first, second)
-      return verified
+
+      if (verified) {
+        return verified
+      }
     } catch (err) {
       console.error(err)
     }
@@ -87,20 +94,29 @@ class Manager {
 
     try {
       const token = jwt.sign({id}, jwtSecret, options)
-      return token
+
+      if (token) {
+        return token
+      }
     } catch (err) {
       console.error(err)
     }
   }
 
   async verifyToken(token) {
-    const {socket, db, jwtSecret} = this
+    const {socket, db, jwtSecret, jwt, mongodb} = this
 
     try {
       const {id} = jwt.verify(token, jwtSecret)
-      const _id = this.getMongoId(id)
-      const account = await db.collection('accounts').findOne({_id})
-      return account
+
+      if (id) {
+        const _id = mongodb.ObjectId(id)
+        const account = await db.collection('accounts').findOne({_id})
+
+        if (account) {
+          return account
+        }
+      }
     } catch (err) {
       if (err.name === 'TokenExpiredError') {
         socket.emit('matDialogClose')
@@ -120,10 +136,12 @@ class Manager {
     try {
       const {role} = await this.verifyToken(token)
 
-      if (role === 'admin') {
+      if (role && role === 'admin') {
         return true
       } else {
+        socket.emit('matDialogClose')
         socket.emit('accessRestricted')
+
         return false
       }
     } catch (err) {

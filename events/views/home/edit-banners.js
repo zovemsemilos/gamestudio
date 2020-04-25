@@ -8,13 +8,11 @@ const editBanners = async (manager, data) => {
 
       banners.forEach(async (banner) => {
         const {src} = banner
-        await db.collection('banners').insertOne({src})
-      })
 
-      // for (const banner of banners) {
-      //   const {src} = banner
-      //   await db.collection('banners').insertOne({src})
-      // }
+        if (src) {
+          await db.collection('banners').insertOne({src})
+        }
+      })
 
       io.emit('editBannersRes', banners)
       socket.emit('matDialogClose')

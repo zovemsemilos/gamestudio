@@ -1,10 +1,10 @@
 const removeMenu = async (manager, data) => {
-  const {io, socket, db} = manager
+  const {io, socket, db, mongodb} = manager
   const {token, menuId} = data
   
   try {
     if (await manager.verifyAdmin(token)) {
-      const _id = manager.getMongoId(menuId)
+      const _id = mongodb.ObjectId(menuId)
 
       await db.collection('menus').deleteOne({_id})
 

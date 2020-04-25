@@ -19,7 +19,7 @@ process.on('uncaughtException', (err, origin) => {
   process.exit(1)
 })
 
-server.listen(process.env.PORT || 8080)
+server.listen(process.env.PORT || 8081)
 
 const init = async () => {
   try {

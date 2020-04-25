@@ -3,14 +3,14 @@ const crypto = require('crypto')
 const puppeteer = require('puppeteer')
 
 class UsponCrawler {
-  constructor(manager, productsUrl) {
+  constructor(manager, data) {
     this.browser
     this.page
 
-    //this.collection = collection
+    this.collection = data.collection
     this.products = []
     this.productsNew = []
-    this.url = productsUrl
+    this.url = data.productsUrl
     this.socket = manager.socket
     this.imageSrcs = {}
 
@@ -22,9 +22,11 @@ class UsponCrawler {
       const {page, socket} = this
 
       await page.goto('https://uspon.rs/site/b2b')
-      await page.waitFor(3000)
-      await page.click('a[class="btn btn-success js-terms-conditions-bottom-line-accept"]')
-      await page.waitFor(3000)
+      await page.waitFor(5000)
+      await page.click(
+        'a[class="btn btn-success js-terms-conditions-bottom-line-accept"]'
+      )
+      await page.waitFor(5000)
       await page.type('[name=email]', 'mszed2009@gmail.com')
       await page.type('[name=password]', 'game2019')
       await page.click('[type=submit]')
@@ -44,7 +46,7 @@ class UsponCrawler {
       await page.waitFor(2000)
 
       const productUrls = await page.evaluate(() => {
-        const qsa = sel => [...document.querySelectorAll(sel)]
+        const qsa = (sel) => [...document.querySelectorAll(sel)]
         const ref = '.title a'
         const $a = qsa(ref)
         return $a.map(el => el.href)
@@ -59,12 +61,12 @@ class UsponCrawler {
 
   async getProductData(url) {
     try {
-      const { page, socket } = this
+      const { page, socket, collection } = this
 
       await page.goto(url)
       await page.waitFor(2000)
 
-      const productData = await page.evaluate(() => {
+      const productData = await page.evaluate((collection) => {
         const qsa = sel => [...document.querySelectorAll(sel)]
         const qs = sel => document.querySelector(sel)
         const parseTable = input => {
@@ -88,10 +90,11 @@ class UsponCrawler {
           }).join("\n\n")
         }
 
+        let heroImage = ''
         const $table = '.product-tab.specification .main-table:nth-child(2)'
         const table = parseTable(qs($table).outerHTML)
         const $images = '.owl-wrapper:first-child a.fancybox'
-        const images = qsa($images).map(item => item.href)
+        const images = qsa($images).map(({href}) => href)
         const nameRef = 'h1.name'
         const name = qs(nameRef).innerText
         const priceRef = '.price-container .row:last-child span.value'
@@ -100,26 +103,35 @@ class UsponCrawler {
         let rows = table.split('\n')
         let tableSpecs = []
 
-        rows.forEach(row => {
+        rows.forEach((row) => {
           const field = row.split(': ')
-          const [a, b] = field
-          tableSpecs.push({leftField: a, rightField: b})
+          const [left, right] = field
+          tableSpecs.push({left, right})
         })
 
         return {
           name,
-          platform: 'PC',
+          collection,
           price,
           discount: 0,
           isInStock: true,
-          shortInfo: '',
-          longInfo: '',
-          tableSpecs,
-          youtubeUrl: '',
-          images: images.length,
-          imageSrcs: images,
+          info: {
+            short: '',
+            long: ''
+          },
+          tableFields: tableSpecs,
+          media: {
+            heroImage: images[0],
+            youtubeUrl: '',
+            galleryImages: images
+          }
         }
-      })
+      }, collection)
+
+      if (productData.media.heroImage === 'https://uspon.rs/img/default/no-image-thumb.jpg') {
+        productData.media.heroImage = 'assets/images/no-img.png'
+      }
+
       socket.emit('crawlUsponRes', `[ GS.AI ] ${ productData.name } harvested successfully`)
       return productData
     } catch (err) {
@@ -172,16 +184,19 @@ class UsponCrawler {
 
   async syncdb() {
     try {
-      const { browser, manager, productsNew } = this
+      const { browser, manager, productsNew, collection } = this
+      const dbCollection = collection.split(' ').join('_').toLowerCase()
       const {db, socket} = manager
       const hashCurrent = { }
       const hashNew = { }
-      const items = await db.collection('playstation_4').find().toArray()
+      const items = await db.collection(dbCollection).find().toArray()
 
       // Create hashes from new and old products
       for (const item of productsNew) {
-        const { name } = item
-        hashNew[name] = item
+        if (item) {
+          const { name } = item
+          hashNew[name] = item
+        }
       }
       for (const item of items) {
         const { name, sku } = item
@@ -219,7 +234,7 @@ class UsponCrawler {
 
       this.products = [ ...cleanCurrent, ...cleanNew ]
 
-      await db.collection('playstation_4').insertMany([...this.products])
+      await db.collection(dbCollection).insertMany([...this.products])
       // for (const product of this.products) {
         
       // }
@@ -238,8 +253,6 @@ class UsponCrawler {
       const productUrls = await this.getProductUrls()
       const ignoreUrl = 'https://uspon.rs/b2b/productdetails'
       const filteredUrls = productUrls.filter(url => url !== ignoreUrl)
-
-      console.log(filteredUrls)
 
       for (const productUrl of filteredUrls) {
         const productData = await this.getProductData(productUrl)
