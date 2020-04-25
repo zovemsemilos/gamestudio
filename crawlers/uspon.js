@@ -267,7 +267,7 @@ class UsponCrawler {
 
   async init() {
     try {
-      this.browser = await puppeteer.launch({headless: false}/*{ args: [ '--no-sandbox' ] }*/)
+      this.browser = await puppeteer.launch({args: ['--no-sandbox']})
       this.page = await this.browser.newPage()
 
       await this.login()
